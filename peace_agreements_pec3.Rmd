@@ -1,0 +1,462 @@
+---
+title: "Peace_agreements"
+author: "Jon Ortiz Abalia"
+date: "11 de noviembre de 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r Librerias, include=FALSE}
+  knitr::opts_chunk$set(
+  echo = TRUE
+  ,warning = FALSE
+  ,message = FALSE
+  ,cache= TRUE
+  )
+
+# Libraries
+
+library('xlsx')  # load output in Excel file
+library(knitr) # for kable()
+library(kableExtra)
+library(dplyr)
+library(tidyr)
+
+```
+
+## 1. Carga de datos
+
+
+```{r carga}
+
+# Carga de datos
+
+setwd("C:/Users/Usuario/Desktop/UOC/4o semestre/Visualizacion_datos/PEC3")
+datos<-read.csv('pax_data_1789_agreements_11-11-19.csv', header=TRUE, sep = ",")
+head(datos)
+
+```
+
+<br/>
+
+## 2. Análisis descriptivo
+
+
+```{r}
+
+# Observamos los tipos de las distintas variables
+
+str(datos)
+```
+
+<br/>
+
+### 2.2 variable "Region"
+
+```{r}
+
+# Extraemos la información sobre las regiones
+
+print(nlevels(datos$Reg))
+
+t1<-data.frame(sort(table(datos$Reg), decreasing = T))
+colnames(t1)<-c('Region', 'Count')
+kable(t1)
+```
+
+<br/>
+
+### 2.3 variable "Loc1ISO"
+
+```{r}
+print(nlevels(datos$Loc1ISO))
+print(sort(table(datos$Loc1ISO), decreasing= T))
+
+
+```
+
+<br/>
+
+### 2.4 variable "Contp" (conflict type)
+
+```{r}
+
+print(nlevels(datos$Contp))
+print(sort(table(datos$Contp), decreasing= T))
+
+t2<-data.frame(sort(table(datos$Contp), decreasing = T))
+colnames(t2)<-c('Conflict type', 'Count')
+kable(t2)
+
+```
+
+<br/>
+
+### 2.5 variable "Dat" (date signed)
+
+```{r}
+
+datos$Dat<-as.Date(datos$Dat)
+
+# Agrupamos los acuerdos por década
+
+datos$decade[datos$Dat <'2000-01-01'] <- "1990-2000"
+datos$decade[datos$Dat <'2010-01-01' & datos$Dat >'2000-01-01'] <- "2000-2010"
+datos$decade[datos$Dat <'2020-01-01' & datos$Dat >'2010-01-01'] <- "2000-2020"
+
+datos$decade<-as.factor(datos$decade)
+
+print(nlevels(datos$decade))
+print(sort(table(datos$decade), decreasing= T))
+
+t3<-data.frame(table(datos$decade))
+colnames(t3)<-c('Decade', 'Count')
+kable(t3)
+
+```
+
+### 2.6 variable "PPname" (Peace process name)
+
+
+```{r}
+print(nlevels(datos$PPName))
+print(sort(table(datos$PPName), decreasing= T))
+t4<-data.frame(sort(table(datos$PPName), decreasing= T))
+colnames(t4)<-c('Process name', 'Count of agreements')
+kable(t4)
+
+```
+
+
+<br/>
+
+## 3. Preprocesamiento de datos
+
+### 3.1 Cambio de nombre de variables
+
+```{r}
+
+# Cambio de
+names(datos)[names(datos) == "ï..Con"] <- "Country"
+names(datos)[names(datos) == "Contp"] <- "Conflict_type"
+names(datos)[names(datos) == "Reg"] <- "Region"
+names(datos)[names(datos) == "AgtId"] <- "Agreement_ID"
+names(datos)[names(datos) == "Dat"] <- "Date_signed"
+names(datos)[names(datos) == "Agtp"] <- "Agreement_conflictType"
+names(datos)[names(datos) == "GCh"] <- "Children"
+names(datos)[names(datos) == "GDis"] <- "Disabled"
+names(datos)[names(datos) == "GAge"] <- "Elderly"
+names(datos)[names(datos) == "GMig"] <- "Migrant_workers"
+names(datos)[names(datos) == "GRa"] <- "Race_Ethnia"
+names(datos)[names(datos) == "GRe"] <- "Religious"
+names(datos)[names(datos) == "GInd"] <- "Indigenous"
+names(datos)[names(datos) == "GRef"] <- "Refugees"
+names(datos)[names(datos) == "GSoc"] <- "Social_class"
+names(datos)[names(datos) == "GeWom"] <- "Women"
+names(datos)[names(datos) == "GeSo"] <- "LGTBI"
+names(datos)[names(datos) == "GeFa"] <- "Family"
+
+```
+
+
+Binarizamos las variables pertenecientes a los grupos teniendo en cuenta únicamente la ausencia ('0') o presencia ('1') de referencias relacionadas con los distintos grupos. Así, dentro de lo que es presencia de referencias no se hará distinción del grado, por lo que los valores '1', '2' o '3' quedarán englobados en un sólo valor, el de presencia ('1').
+
+
+```{r group_children}
+
+# Group 'children': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Children == 1),]))
+print(nrow(datos[which(datos$Children == 2),]))
+print(nrow(datos[which(datos$Children == 3),]))
+datos$Children[datos$Children == 2 | datos$Children == 3] <- 1
+print(nrow(datos[which(datos$Children == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Children<-as.factor(datos$Children)
+
+print(nlevels(datos$Children))
+print(sort(table(datos$Children), decreasing= T))
+
+t_children<-data.frame(table(datos$Children))
+colnames(t_children)<-c('Children', 'Count')
+kable(t_children)
+
+```
+
+```{r group_disabled}
+
+# Group 'disabled': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Disabled == 1),]))
+print(nrow(datos[which(datos$Disabled == 2),]))
+print(nrow(datos[which(datos$Disabled == 3),]))
+datos$Disabled[datos$Disabled == 2 | datos$Disabled == 3] <- 1
+print(nrow(datos[which(datos$Disabled == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Disabled<-as.factor(datos$Disabled)
+
+print(nlevels(datos$Disabled))
+print(sort(table(datos$Disabled), decreasing= T))
+
+```
+
+```{r group_elderly}
+
+# Group 'elderly': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Elderly == 1),]))
+print(nrow(datos[which(datos$Elderly == 2),]))
+print(nrow(datos[which(datos$Elderly == 3),]))
+datos$Elderly[datos$Elderly == 2 | datos$Elderly == 3] <- 1
+print(nrow(datos[which(datos$Elderly == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Elderly<-as.factor(datos$Elderly)
+
+print(nlevels(datos$Elderly))
+print(sort(table(datos$Elderly), decreasing= T))
+
+```
+
+```{r group_migrantWorkers}
+
+# Group 'migrant_workers': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Migrant_workers == 1),]))
+print(nrow(datos[which(datos$Migrant_workers == 2),]))
+print(nrow(datos[which(datos$Migrant_workers == 3),]))
+datos$Migrant_workers[datos$Migrant_workers == 2 | datos$Migrant_workers == 3] <- 1
+print(nrow(datos[which(datos$Migrant_workers == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Migrant_workers<-as.factor(datos$Migrant_workers)
+
+print(nlevels(datos$Migrant_workers))
+print(sort(table(datos$Migrant_workers), decreasing= T))
+```
+
+```{r group_raceEthnia}
+
+# Group 'Race_Ethnia': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Race_Ethnia == 1),]))
+print(nrow(datos[which(datos$Race_Ethnia == 2),]))
+print(nrow(datos[which(datos$Race_Ethnia == 3),]))
+datos$Race_Ethnia[datos$Race_Ethnia == 2 | datos$Race_Ethnia == 3] <- 1
+print(nrow(datos[which(datos$Race_Ethnia == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Race_Ethnia<-as.factor(datos$Race_Ethnia)
+
+print(nlevels(datos$Race_Ethnia))
+print(sort(table(datos$Race_Ethnia), decreasing= T))
+
+```
+
+```{r group religious}
+
+# Group 'Religious': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Religious == 1),]))
+print(nrow(datos[which(datos$Religious  == 2),]))
+print(nrow(datos[which(datos$Religious  == 3),]))
+datos$Religious [datos$Religious  == 2 | datos$Religious == 3] <- 1
+print(nrow(datos[which(datos$Religious  == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Religious <-as.factor(datos$Religious)
+
+print(nlevels(datos$Religious))
+print(sort(table(datos$Religious), decreasing= T))
+```
+
+```{r group indigenous}
+
+# Group 'Indigenous': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Indigenous == 1),]))
+print(nrow(datos[which(datos$Indigenous == 2),]))
+print(nrow(datos[which(datos$Indigenous == 3),]))
+datos$Indigenous[datos$Indigenous == 2 | datos$Indigenous == 3] <- 1
+print(nrow(datos[which(datos$Indigenous == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Indigenous <-as.factor(datos$Indigenous)
+
+print(nlevels(datos$Indigenous))
+print(sort(table(datos$Indigenous), decreasing= T))
+```
+
+```{r group_refugees}
+
+# Group 'Refugees': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Refugees == 1),]))
+print(nrow(datos[which(datos$Refugees == 2),]))
+print(nrow(datos[which(datos$Refugees == 3),]))
+datos$Refugees[datos$Refugees == 2 | datos$Refugees == 3] <- 1
+print(nrow(datos[which(datos$Refugees == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Refugees <-as.factor(datos$Refugees)
+
+print(nlevels(datos$Refugees))
+print(sort(table(datos$Refugees), decreasing= T))
+```
+
+```{r group_socialClass}
+
+# Group 'Social_class': toma valores de 0 a 3. Agruparemos los valores distintos a '0' en '1'
+
+print(nrow(datos[which(datos$Social_class == 1),]))
+print(nrow(datos[which(datos$Social_class == 2),]))
+print(nrow(datos[which(datos$Social_class == 3),]))
+datos$Social_class[datos$Social_class == 2 | datos$Social_class == 3] <- 1
+print(nrow(datos[which(datos$Social_class == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Social_class <-as.factor(datos$Social_class)
+
+print(nlevels(datos$Social_class))
+print(sort(table(datos$Social_class), decreasing= T))
+
+```
+
+```{r group_women}
+
+# Group 'Women': toma valores de 0 a 1. No hará falta hacer cambios
+
+print(nrow(datos[which(datos$Women == 0),]))
+print(nrow(datos[which(datos$Women  == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Women <-as.factor(datos$Women)
+
+print(nlevels(datos$Women))
+print(sort(table(datos$Women), decreasing= T))
+
+```
+
+```{r group_LGTBI}
+
+# Group 'LGTBI': toma valores de 0 a 1. No hará falta hacer cambios
+
+print(nrow(datos[which(datos$LGTBI == 0),]))
+print(nrow(datos[which(datos$LGTBI  == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$LGTBI <-as.factor(datos$LGTBI)
+
+print(nlevels(datos$LGTBI))
+print(sort(table(datos$LGTBI), decreasing= T))
+
+```
+
+```{r group_family}
+
+# Group 'Family': toma valores de 0 a 1. No hará falta hacer cambios
+
+print(nrow(datos[which(datos$Family == 0),]))
+print(nrow(datos[which(datos$Family  == 1),]))
+
+# Cambiamos el tipo de la variable a tipo 'factor'
+
+datos$Family <-as.factor(datos$Family)
+
+print(nlevels(datos$Family))
+print(sort(table(datos$Family), decreasing= T))
+
+```
+
+
+```{r}
+datos$Groups_none<-'NA'
+
+datos$Groups_none[which(datos$Children== 0 & datos$Disabled== 0 & datos$Elderly == 0 & datos$Migrant_workers== 0 & datos$Race_Ethnia == 0 & datos$Religious == 0 & datos$Indigenous == 0 & datos$Refugees == 0 & datos$Social_class == 0 & datos$Women == 0 & datos$LGTBI == 0 & datos$Family == 0)]<-'None'
+
+print(nrow(datos[which(datos$Groups_none == 'None'),]))
+```
+
+
+Paso las 12 variables categóricas binarias de columnas a filas y crearé una nueva variable llamada "Groups" que contenga dicha información.
+
+
+```{r}
+
+# Transformo las variables binarias de columnas a filas
+
+datos2<-gather(datos, key='Groups', value = 'Reference', Children, Disabled, Elderly, Migrant_workers, Race_Ethnia, Religious, Indigenous, Refugees, Social_class, Women, LGTBI, Family)
+
+```
+
+```{r}
+
+# Elimino aquellas filas con valor '0' en la columna 'Reference' recién creada pero que no tengan 'None' en la columna 'Groups_none' para no eliminar aquellos agreements que no hagan referencia a ninguna de esas categorías
+
+
+datos2<-datos2[!(datos2$Reference == "0" & datos2$Groups_none != 'None'),]
+
+# Cambio los valores en 'Groups' a 'None' para aquellos registros donde 'Groups_none' sea 'None'
+
+datos2$Groups[which(datos2$Groups_none=='None')]<-'None'
+
+# Elimino las columnas 'Groups_none' y 'Reference'
+
+datos2 <- subset(datos2, select = -c(Groups_none, Reference))
+
+# Elimino las filas duplicadas
+
+datos2<-distinct(datos2)
+
+
+print(nrow(datos2[which(datos2$Groups=='Children'),]))
+print(nrow(datos2[which(datos2$Groups=='Disabled'),]))
+print(nrow(datos2[which(datos2$Groups=='Elderly'),]))
+print(nrow(datos2[which(datos2$Groups=='Migrant_workers'),]))
+print(nrow(datos2[which(datos2$Groups=='Race_Ethnia'),]))
+print(nrow(datos2[which(datos2$Groups=='Religious'),]))
+print(nrow(datos2[which(datos2$Groups=='Indigenous'),]))
+print(nrow(datos2[which(datos2$Groups=='Refugees'),]))
+print(nrow(datos2[which(datos2$Groups=='Social_class'),]))
+print(nrow(datos2[which(datos2$Groups=='Women'),]))
+print(nrow(datos2[which(datos2$Groups=='LGTBI'),]))
+print(nrow(datos2[which(datos2$Groups=='Family'),]))
+```
+
+```{r}
+length(unique(datos$Agreement_ID))
+length(unique(datos2$Agreement_ID))
+
+```
+
+
+
+<br/>
+
+## 4. Exportación de datos
+
+```{r}
+library(openxlsx)
+
+write.xlsx(datos, "peace_agreements_pec3.xlsx", sheetName = "Sheet1", 
+  col.names = TRUE, row.names = FALSE, append = FALSE)
+
+write.xlsx(datos2, "peace_agreements_groups.xlsx", sheetName = "Sheet1", 
+  col.names = TRUE, row.names = FALSE, append = FALSE)
+```
+
+
